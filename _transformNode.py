@@ -1,12 +1,10 @@
-from typing import Union
+from maya.api import OpenMaya
 
-from maya import OpenMaya
-
-from Nodes._factory import _Factory
-from Nodes._dagNode import _DAGNode
+from TestMayaNodes import _factory
+from TestMayaNodes._dagNode import _DAGNode
 
 
-@_Factory.register()
+@_factory.register()
 class _TransformNode(_DAGNode):
 
     kApiType = OpenMaya.MFn.kTransform

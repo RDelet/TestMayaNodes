@@ -1,5 +1,5 @@
-from Nodes.node import Node
-from Nodes._dgNode import _DGNode
-from Nodes._dagNode import _DAGNode
-from Nodes._transformNode import _TransformNode
+from TestMayaNodes.node import Node
+from TestMayaNodes._dgNode import _DGNode
+from TestMayaNodes._dagNode import _DAGNode
+from TestMayaNodes._transformNode import _TransformNode
 

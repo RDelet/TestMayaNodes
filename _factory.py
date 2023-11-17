@@ -2,62 +2,66 @@
 
 import copy
 import six
+from typing import Union
 
 from maya import OpenMaya
 
-from Nodes._instances import _Instances
-from Nodes.logger import log
+from TestMayaNodes import _instances, utils
+from TestMayaNodes.logger import log
 
 
-class _Factory(object):
+_registered = dict()
 
-    __registered_cls = dict()
-    __instances = _Instances()
 
-    @classmethod
-    def create(cls, node: OpenMaya.MObject) -> object:
-        instance = cls.__instances.get(node)
-        return instance if instance else cls._create(node)
+def create(node: OpenMaya.MObject) -> object:
+    instance = _instances.get(node)
+    return instance if instance else _create(node)
 
-    @classmethod
-    def _create(cls, node: OpenMaya.MObject) -> object:
-        api_type = node.apiType()
-        if not _Factory.is_registered(api_type):
-            if node.hasFn(OpenMaya.MFn.kDagNode):
-                api_type = OpenMaya.MFn.kDagNode
-            else:
-                api_type = OpenMaya.MFn.kDependencyNode
 
-        new_instances = cls.__registered_cls[api_type](node)
-        cls.__instances.add(node, new_instances)
+def _create(node: Union[str, OpenMaya.MObject]) -> object:
+    if isinstance(node, str):
+        node = utils.get_object(node)
 
-        return new_instances
+    api_type = _get_type(node)
+    new_cls = _registered[api_type](node)
+    _instances.add(node, new_cls)
 
-    @classmethod
-    def _do_register(cls, class_obj: six.class_types):
+    return new_cls
+
+
+def _get_type(node: OpenMaya.MObject):
+    api_type = node.apiType()
+    if not is_registered(api_type):
+        if node.hasFn(OpenMaya.MFn.kDagNode):
+            api_type = OpenMaya.MFn.kDagNode
+        else:
+            api_type = OpenMaya.MFn.kDependencyNode
+    
+    return api_type
+
+
+def register():
+    def do_register(class_obj: six.class_types):
         if not isinstance(class_obj, six.class_types):
-            raise RuntimeError("Only class can be registered !")
+            raise RuntimeError("This decorator can be use only by a class !")
+        _do_register(class_obj)
+        return class_obj
+    return do_register
 
-        api_type = class_obj.kApiType
-        if api_type in cls.__registered_cls:
-            raise ValueError(f"Object {class_obj.__name__} has already been registered !")
 
-        cls.__registered_cls[api_type] = class_obj
-        log.debug(f"Class {class_obj.__name__} registered.")
+def _do_register(class_obj: six.class_types):
+    api_type = class_obj.kApiType
+    if is_registered(api_type):
+        log.debug(f"Class {class_obj.__name__} already registered.")
+        return
 
-    @classmethod
-    def is_registered(cls, api_type: int) -> bool:
-        return api_type in cls.__registered_cls
+    _registered[api_type] = class_obj
+    log.debug(f"Class {class_obj.__name__} registered.")
 
-    @classmethod
-    def register(cls):
-        def do_register(class_obj: six.class_types):
-            if not isinstance(class_obj, six.class_types):
-                raise RuntimeError("This decorator can be use only by a class !")
-            cls._do_register(class_obj)
-            return class_obj
-        return do_register
 
-    @classmethod
-    def registered(cls) -> dict:
-        return copy.copy(cls.__registered_cls)
+def is_registered(api_type: int) -> bool:
+    return api_type in _registered
+
+
+def registered() -> dict:
+    return copy.copy(_registered)
